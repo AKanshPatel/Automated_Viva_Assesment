@@ -13,11 +13,15 @@ import Link from "next/link"
 
 export default function Login() {
   const router = useRouter()
+  
+  // State to manage form data and submission status
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    studentId: "",
+    roll_number: "",
   })
+
+  const [isSubmitting, setIsSubmitting] = useState(false) // State to track submission status
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -26,7 +30,8 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-  
+    setIsSubmitting(true) // Set submitting state to true when form is submitted
+
     try {
       const res = await fetch("http://localhost:8000/login", {
         method: "POST",
@@ -37,6 +42,8 @@ export default function Login() {
       })
   
       if (res.ok) {
+        const data = await res.json()
+        localStorage.setItem("session_id", data.session_id) 
         router.push("/topics")
       } else {
         const data = await res.json()
@@ -45,6 +52,8 @@ export default function Login() {
     } catch (error) {
       console.error("Login error:", error)
       alert("Something went wrong. Please try again.")
+    } finally {
+      setIsSubmitting(false) // Reset submission state once API call is complete
     }
   }
 
@@ -82,13 +91,13 @@ export default function Login() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="studentId">Student ID</Label>
+                <Label htmlFor="roll_number">Roll No</Label>
                 <Input
-                  id="studentId"
-                  name="studentId"
-                  placeholder="S12345"
+                  id="roll_number"
+                  name="roll_number"
+                  placeholder="123456"
                   required
-                  value={formData.studentId}
+                  value={formData.roll_number}
                   onChange={handleChange}
                 />
               </div>
@@ -99,8 +108,8 @@ export default function Login() {
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Link>
               </Button>
-              <Button type="submit">
-                Continue <ArrowRight className="ml-2 h-4 w-4" />
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Loading..." : "Continue"} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardFooter>
           </form>
@@ -109,4 +118,3 @@ export default function Login() {
     </main>
   )
 }
-

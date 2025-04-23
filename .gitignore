@@ -30,4 +30,8 @@ next-env.d.ts
 
 # Backend Files
 backend/proj_venv/
-backend/data/question_bank.json
+backend/data/question_bank.
+backend/student_import.log
+backend/viva.db
+backend/students.json
+backend/data

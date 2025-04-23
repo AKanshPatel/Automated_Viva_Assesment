@@ -2,17 +2,22 @@
     {
       "name": "Akansh Patel",
       "email": "akanshpatel425@gmail.com",
-      "rollno": "301602221020"
+      "roll_number": "301602221020"
     },
     {
       "name": "Shivam Patel",
       "email": "shivampatel@gmail.com",
-      "rollno": "301602221002"
+      "roll_number": "301602221002"
     },
     {
       "name": "Suruchi Pandey",
       "email": "suruchipandey@gmail.com",
-      "rollno": "301602222303"
+      "roll_number": "301602222303"
+    },
+    {
+      "name": "Harish Patel",
+      "email": "harishpatel@gmail.com",
+      "roll_number": "301602221026"
     }
   ]
   
