@@ -99,3 +99,11 @@ def save_topics(topicsData: TopicSelection):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating session file: {str(e)}")
+
+@app.get("get-questions/{session_id}")
+def get_questions(session_id: str):
+    pass
+    # question_no = # How to get the question number from the session_id?
+    # question_text = question_manager.get_questions(session_id,question_no)
+    
+    
