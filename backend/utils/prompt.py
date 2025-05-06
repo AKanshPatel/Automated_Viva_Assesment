@@ -65,10 +65,13 @@ class PromptGenerator:
         Assign a score from 1 to 10 based on these criteria.
         Provide brief feedback explaining the score.
 
-        Return the result strictly in the following list format:
-        [<score>, "<your feedback>"]
-
+        Return the result in plain text using the following key-value pair format:
+            Score: <score>  
+            Feedback: <your_feedback>
+            
         Example:
-        [8, "Good answer but lacks some depth in explanation."]
+        Score: 7  
+        Feedback: Good explanation, but lacks clarity in the example.
+
         """
         return prompt_feedback

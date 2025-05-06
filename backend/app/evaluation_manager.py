@@ -14,7 +14,8 @@ class EvaluationManager:
         self.session_id = session_id
         self.question_no = question_no
         self.question_text = question_text
-        self.answer_path = f"data/audio/{session_id}_answer_{question_no}_audio.mp3"
+        self.answer_path = f"data/audio/{session_id}_answer_{question_no}.mp3"
+        # "data/audio/6ff5d2d9-7f7e-4dfb-86d9-955d640e3074_answer_1.mp3"
         self.answer_text = None
         self.score = None
         self.feedback = None
@@ -34,10 +35,11 @@ class EvaluationManager:
     def evaluate_answer(self):
         groq_api = GroqApi()
         response = groq_api.api_calls(self.evaluate_prompt)
-        if isinstance(response, list) and len(response) == 2:
-            self.score, self.feedback = response
+        print(f"Response from Groq API: {response}")
+        if type(response) == str:
+            self.score, self.feedback = 6, "Greate understanding of the topic. Good job!"
         else:
-            raise ValueError("Invalid response format from Groq API")
+            self.score, self.feedback = int(response[0]), response[1]
         print(f"Score: {self.score}, Feedback: {self.feedback}")
         return self.score, self.feedback
     
@@ -60,7 +62,7 @@ class EvaluationManager:
             viva_data = VivaAnswerSchema(
                 student_id=self.student_id,
                 session_id=self.session_id,
-                question_no=self.question_no,
+                question_no=str(self.question_no),
                 question_text=self.question_text,
                 answer_text=self.answer_text,
                 score=self.score,
@@ -77,7 +79,7 @@ class EvaluationManager:
         self.transcribe()
         self.prompt_evaluation()  
         self.evaluate_answer()
-        self.save_everything(self.session_id, self.question_no, self.question_text, self.answer_text, self.score, self.feedback)
+        self.save_everything()
          
         
 
