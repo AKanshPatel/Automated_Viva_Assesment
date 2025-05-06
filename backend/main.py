@@ -14,7 +14,7 @@ from utils import session_manager
 from app.question_manager import QuestionManager
 from fastapi.staticfiles import StaticFiles
 from fastapi import File, UploadFile, Form 
-from backend.app.evaluation_manager import EvaluationManager
+from app.evaluation_manager import EvaluationManager
 
 # from database import SessionLocal
 from database.crud import studentcrud
@@ -128,11 +128,6 @@ def get_question(session_id: str = Query(..., description="The ID of the exam se
             audioUrl = f"http://localhost:8000/audio/{session_id}_question_{question_index}_audio.mp3",
             totalQuestions = 5  # Replace with dynamic count if available
         )
-        # return QuestionResponse(
-        #     questionText = "What is Supervised Learning?",
-        #     audioUrl = "http://localhost:8000/audio/9b71e9c3-4e6b-4253-9f88-4752cfeca143_question_1_audio",
-        #     totalQuestions = 5  # Replace with dynamic count if available
-        # )
 
     except HTTPException as e:
         raise e
@@ -182,25 +177,6 @@ def submit_answer(
         evaluation_manager = EvaluationManager(session_id, q_index, question_text)
         evaluation_manager.run()
         
-        
-        # Save metadata to a JSON file for reference (optional)
-        # metadata_path = os.path.join(audio_dir, f"{session_id}_answer_{q_index}_metadata.json")
-        # metadata = {
-        #     "session_id": session_id,
-        #     "question_index": q_index,
-        #     "question_text": question_text,
-        #     "original_filename": audio.filename,
-        #     "saved_path": file_path,
-        #     "timestamp": datetime.now().isoformat()
-        # }
-        
-        
-        
-        # with open(metadata_path, "w") as f:
-        #     json.dump(metadata, f, indent=4)
-        
-        # Determine if this is the last question (assuming 5 total questions)
-        # In a real app, you'd get this from your database or session data
         total_questions = 5
         is_last_question = q_index >= total_questions - 1
         

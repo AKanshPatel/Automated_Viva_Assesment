@@ -22,6 +22,7 @@ class EvaluationManager:
         
     def transcribe(self):
         deepgram_api = DeepgramAPI(self.session_id, self.question_no)
+        print("self.answer_path", self.answer_path)
         self.answer_text = deepgram_api.transcribe_audio(self.answer_path)
         print(f"Transcribed answer: {self.answer_text}")
         return self.answer_text
