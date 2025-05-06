@@ -1,4 +1,4 @@
-from fastapi import FastAPI , HTTPException, Depends 
+from fastapi import FastAPI , HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -11,6 +11,9 @@ import uuid
 from database.connection import get_db
 from database.crud import studentcrud 
 from utils import session_manager 
+from app.question_manager import QuestionManager
+from fastapi.staticfiles import StaticFiles
+from fastapi import File, UploadFile, Form 
 
 
 # from database import SessionLocal
@@ -26,6 +29,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+audio_dir = os.path.join("data", "audio")
+app.mount("/audio", StaticFiles(directory=audio_dir), name="audio")
 
 class StudentLogin(BaseModel):
     # student_id : int
@@ -36,6 +41,11 @@ class StudentLogin(BaseModel):
 class TopicSelection(BaseModel):
     sessionId: str
     selected_topics: Dict[str, List[str]]  # e.g., {"Unit Name 1": ["Topic A", "Topic B"]}
+
+class QuestionResponse(BaseModel):
+    questionText: str
+    audioUrl: str
+    totalQuestions: int
 
 
 @app.post("/login")
@@ -100,10 +110,113 @@ def save_topics(topicsData: TopicSelection):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating session file: {str(e)}")
 
-@app.get("get-questions/{session_id}")
-def get_questions(session_id: str):
-    pass
-    # question_no = # How to get the question number from the session_id?
-    # question_text = question_manager.get_questions(session_id,question_no)
-    
-    
+@app.get("/questions")
+def get_question(session_id: str = Query(..., description="The ID of the exam session"),
+                 question_index: int = Query(..., description="The index of the question to retrieve")):
+    """
+    Retrieves a specific question and its audio URL for a given session and index.
+    """
+    # question_index = question_index + 1  # Adjusting to 1-based index for user-friendliness
+    print(f"Session ID: {session_id}, Question Index: {question_index}")
+    try: 
+        question_manager = QuestionManager(session_id, question_index)
+        question_text, audio_url = question_manager.run()
+        print(f"http://localhost:8000/audio/{session_id}_question_{question_index}_audio.mp3")
+        return QuestionResponse(
+            questionText = question_text,
+            audioUrl = f"http://localhost:8000/audio/{session_id}_question_{question_index}_audio.mp3",
+            totalQuestions = 5  # Replace with dynamic count if available
+        )
+        # return QuestionResponse(
+        #     questionText = "What is Supervised Learning?",
+        #     audioUrl = "http://localhost:8000/audio/9b71e9c3-4e6b-4253-9f88-4752cfeca143_question_1_audio",
+        #     totalQuestions = 5  # Replace with dynamic count if available
+        # )
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")\
+            
+# @app.post("/api/transcribe")
+# async def transcribe_audio(
+#     audio: UploadFile = File(...),
+#     session_id: str = Form(...),
+#     question_text: str = Form(...)
+# ):
+#     """
+#     Endpoint to receive an audio file, session ID, and question text.
+#     It saves the audio file and returns a placeholder for transcription.
+#     In a real application, you would integrate with a speech-to-text service here.
+#     """
+#     try:
+#         if not audio.filename:
+#             return JSONResponse(status_code=400, content={"error": "No audio file provided."})
+
+#         file_extension = audio.filename.split(".")[-1].lower()
+#         if file_extension not in ["mp3", "wav", "ogg"]:
+#             return JSONResponse(status_code=400, content={"error": "Unsupported audio format. Only MP3, WAV, and OGG are supported."})
+
+#         unique_filename = f"{session_id}_answer_{uuid.uuid4()}.{file_extension}" # added session_id
+#         file_path = os.path.join(audio_dir, unique_filename) # changed to audio_dir
+
+#         with open(file_path, "wb") as f:
+#             while chunk := await audio.read(1024 * 1024):  # Read in chunks of 1MB
+#                 f.write(chunk)
+
+#         # In a real application, you would now:
+#         # 1. Use a speech-to-text service (e.g., Google Cloud Speech-to-Text, AssemblyAI, Whisper)
+#         #    to transcribe the audio file located at file_path.
+#         # 2. Handle potential errors from the transcription service.
+#         # 3. Possibly store the transcription, session ID, and question text in a database.
+
+#         # For this example, we'll just return a placeholder transcription.
+#         transcription_result = f"Transcription of audio for session {session_id}, question: '{question_text}' will go here.  File saved at: {file_path}"
+
+#         return JSONResponse(status_code=200, content={"transcription": transcription_result, "audio_file_path": file_path})
+
+#     except Exception as e:
+#         return JSONResponse(status_code=500, content={"error": f"Error processing audio: {str(e)}"})
+
+@app.post("/api/submit-answer")
+async def submit_answer(
+    audio: UploadFile = File(...),
+    session_id: str = Form(...),
+    question_index: int = Form(...),
+    question_text: str = Form(...),
+    # answer_text: Optional[str] = Form(None), # If you decide to handle text answers later
+):
+    """
+    Endpoint to receive and process audio answers along with related information.
+    """
+    try:
+        # 1. Save the audio file
+        file_path = f"./audio_uploads/session_{session_id}_question_{question_index + 1}.mp3"
+        with open(file_path, "wb") as audio_file:
+            while chunk := await audio.read(1024):
+                audio_file.write(chunk)
+
+        # 2. Process the submitted data
+        print(f"Received audio file: {audio.filename}")
+        print(f"Session ID: {session_id}")
+        print(f"Question Index: {question_index}")
+        print(f"Question Text: {question_text}")
+        # if answer_text:
+        #     print(f"Answer Text: {answer_text}")
+
+        # TODO: Implement your logic to:
+        # - Store the file path and associated data in a database.
+        # - Perform any analysis on the audio file (e.g., transcription).
+        # - Update the session status or user progress.
+
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Answer submitted successfully", "file_path": file_path},
+        )
+
+    except Exception as e:
+        print(f"Error processing submission: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process submission: {str(e)}"},
+        )

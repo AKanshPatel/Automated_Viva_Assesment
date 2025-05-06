@@ -10,7 +10,7 @@ class QuestionManager:
         self.question_no = question_no
         self.session_id = session_id
         self.question_text = None
-        self.question_audio_path = "data/audio/question_audio.mp3"
+        self.question_audio_path = f"data/audio/{session_id}_question_{question_no}_audio.mp3"
         self.create_audio_directory()
        
         # Load the filtered question bank
@@ -35,6 +35,7 @@ class QuestionManager:
         self.question_prompt = self.prompt_generator.generate_prompt_question() 
         
     def question_text_fetch(self): 
+        print("generating Question......")
         groq_api = GroqApi()
         self.question_text = groq_api.api_calls(self.question_prompt)
         print(self.question_text) 
@@ -42,14 +43,12 @@ class QuestionManager:
     def question_audio(self):
         print("Generating audio...")
         print(self.question_text)
-        deepgram_api = DeepgramAPI()
-        deepgram_api.text_to_speech(self.question_text, self.question_audio_path)
+        deepgram_api = DeepgramAPI(self.session_id, self.question_no)
+        deepgram_api.text_to_speech(self.question_text)
     
     
-    def subset_question(self, question_no,):
+    def subset_question(self, question_no, sel):
         pass
-     
-    
     
     def run(self):
         self.question_prompt_fetch()

@@ -14,7 +14,8 @@ class DeepgramAPI:
         tts_model (str): The model to use for TTS (default: 'aura-arcas-en').
     """
 
-    def __init__(self):
+    def __init__(self, session_id, question_no):
+
         """
         Initialize the DeepgramAPI instance with API key and model configurations.
 
@@ -23,6 +24,9 @@ class DeepgramAPI:
             transcription_model (str): The model to use for transcription (default: 'nova-2').
             tts_model (str): The model to use for TTS (default: 'aura-arcas-en').
         """
+        self.session_id = session_id
+        self.question_no = question_no
+        self.audio_path = f"data/audio/{session_id}_question_{question_no}_audio.mp3"
         load_dotenv()
         self.api_key = os.getenv("DEEPGRAM_API_KEY")
         self.transcription_model = "nova-2"
@@ -54,13 +58,13 @@ class DeepgramAPI:
             # logging.error(f"{Fore.RED}Deepgram transcription error: {e}{Fore.RESET}")
             raise Exception("Error in transcribing audio")
 
-    def text_to_speech(self, text, output_file_path):
+    def text_to_speech(self, text):
         """
         Convert text to speech and save the output audio file using Deepgram's Text-to-Speech API.
 
         Args:
             text (str): The text to convert to speech.
-            output_file_path (str): The path to save the generated speech audio file.
+            self.audio_path (str): The path to save the generated speech audio file.
 
         Returns:
             None
@@ -73,10 +77,10 @@ class DeepgramAPI:
             )
 
             self.deepgram_client.speak.v("1").save(
-                output_file_path,
+                self.audio_path,
                 {"text": text},
                 options
             )
-            print(f"Speech successfully saved to {output_file_path}")
+            print(f"Speech successfully saved to {self.audio_path}")
         except Exception as e:
             raise Exception("Error in text-to-speech conversion")
