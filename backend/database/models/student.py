@@ -11,7 +11,7 @@ class Student(Base):
     roll_number = Column(String, nullable=False, unique=True)
 
     # Relationships (you should define the other side in respective models)
-    viva_answers = relationship("VivaAnswer", back_populates="student")
+    # viva_answers = relationship("VivaAnswer", back_populates="student")
     # performance = relationship("Performance", back_populates="student", uselist=False)
 
 # Function to create tables

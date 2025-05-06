@@ -44,7 +44,6 @@ class QuestionManager:
         else:
             self.question_prompt = self.prompt_generator.generate_subsequent_question_prompt(self.filtered_qb,self.question_text_prev, self.answer_text, self.feedback)
     def question_text_fetch(self): 
-        print("generating Question......")
         groq_api = GroqApi()
         self.question_text = groq_api.api_calls(self.question_prompt)
         print(self.question_text) 

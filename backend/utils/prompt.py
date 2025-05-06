@@ -18,7 +18,7 @@ class PromptGenerator:
         Return **only** the selected question. Do not include any additional explanation or context.
 
         Question Bank:
-        {self.filtered_qb}
+        {filtered_qb}
         
         """
         return prompt_first
@@ -47,7 +47,7 @@ class PromptGenerator:
         return prompt_second
 
 
-    def generate_feedback_prompt(self, question, candidate_answer):
+    def generate_feedback_prompt(self, question, answer_text):
         """
         Generates the evaluation feedback prompt.
         The model evaluates the candidate's answer and provides a score and feedback.
@@ -55,7 +55,7 @@ class PromptGenerator:
         prompt_feedback = f"""
         The candidate answered the following question:
         "{question}"
-        Their answer: "{candidate_answer}"
+        Their answer: "{answer_text}"
 
         Please evaluate the answer based on the following criteria:
         1. Relevance to the question

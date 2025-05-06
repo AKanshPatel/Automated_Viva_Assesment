@@ -179,6 +179,10 @@ def submit_answer(
             contents = audio.file.read()
             f.write(contents)
         
+        evaluation_manager = EvaluationManager(session_id, q_index, question_text)
+        evaluation_manager.run()
+        
+        
         # Save metadata to a JSON file for reference (optional)
         # metadata_path = os.path.join(audio_dir, f"{session_id}_answer_{q_index}_metadata.json")
         # metadata = {

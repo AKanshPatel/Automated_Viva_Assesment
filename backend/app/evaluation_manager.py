@@ -2,6 +2,10 @@ import os
 from models.deepgram_stt_tts import DeepgramAPI
 from models.groq_api_llm import GroqApi
 from utils.prompt import PromptGenerator
+import json
+from database.crud import viva_answer_crud 
+from database.schemas.viva_answer_schema import VivaAnswerSchema
+from database.connection import SessionLocal
 
 
 
@@ -11,35 +15,71 @@ class EvaluationManager:
         self.question_no = question_no
         self.question_text = question_text
         self.answer_path = f"data/audio/{session_id}_answer_{question_no}_audio.mp3"
+        self.answer_text = None
+        self.score = None
+        self.feedback = None
+        self.student_id = None
         
     def transcribe(self):
         deepgram_api = DeepgramAPI(self.session_id, self.question_no)
-        answer_text = deepgram_api.transcribe_audio(self.answer_path)
-        print(f"Transcribed answer: {answer_text}")
-        return answer_text
+        self.answer_text = deepgram_api.transcribe_audio(self.answer_path)
+        print(f"Transcribed answer: {self.answer_text}")
+        return self.answer_text
     
     def prompt_evaluation(self): 
-        self.prompt_generator = PromptGenerator(self.filtered_qb, self.question_no)
-    
-    def evaluate_answer(self, answer_text):
+        self.prompt_generator = PromptGenerator()
+        self.evaluate_prompt = self.prompt_generator.generate_feedback_prompt(self.question_text, self.answer_text)
+        
+    def evaluate_answer(self):
         groq_api = GroqApi()
-        
-        score, feedback = groq_api.evaluate_answer(question_text, answer_text)
-        print(f"Score: {score}, Feedback: {feedback}")
-        return score, feedback
+        response = groq_api.api_calls(self.evaluate_prompt)
+        if isinstance(response, list) and len(response) == 2:
+            self.score, self.feedback = response
+        else:
+            raise ValueError("Invalid response format from Groq API")
+        print(f"Score: {self.score}, Feedback: {self.feedback}")
+        return self.score, self.feedback
     
     
-    def save_everything(self,session_id, question_no, question_text, answer_text, score, feedback):
-        # Save the session_id, question text, answer text, question index, score, feedback
-        # This could be a database operation or saving to a file
+    def get_student_id(self): 
+        session_json_path = os.path.join("data", "sessions", f"{self.session_id}.json")    
+        if os.path.exists(session_json_path):
+            with open(session_json_path, 'r') as f:
+                session_data = json.load(f)
+                student_id = session_data.get("student_id")
+                if student_id:
+                    self.student_id = student_id
+                    return student_id
+                else:
+                    raise ValueError(f"Student ID not found in session data for session {self.session_id}")
+    
+    def save_everything(self):
+        db = SessionLocal()
+        try:
+            viva_data = VivaAnswerSchema(
+                student_id=self.student_id,
+                session_id=self.session_id,
+                question_no=self.question_no,
+                question_text=self.question_text,
+                answer_text=self.answer_text,
+                score=self.score,
+                feedback=self.feedback
+            )
+
+            db_viva_answer = viva_answer_crud.add_viva_answer(db, viva_data)
+            return db_viva_answer
+        finally:
+            db.close()
+
+    def run(self):
+        self.get_student_id()
+        self.transcribe()
+        self.prompt_evaluation()  
+        self.evaluate_answer()
+        self.save_everything(self.session_id, self.question_no, self.question_text, self.answer_text, self.score, self.feedback)
+         
         
-        
-        print(f"Saving evaluation data for session {session_id}:")
-        print(f"- Question No: {question_no}")
-        print(f"- Question Text: {question_text}")
-        print(f"- Answer Text: {answer_text}")
-        print(f"- Score: {score}")
-        print(f"- Feedback: {feedback}")
+
 if __name__ == "__main__":
     evaluation_manager = EvaluationManager("2e6c3b98-0732-454a-be80-1df3084ae2a0", "1", "What is your name?")
     evaluation_manager.transcribe()
