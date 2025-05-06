@@ -1,4 +1,3 @@
-// app/exam/page.tsx
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -7,41 +6,118 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { Play, Pause, ArrowRight, AlertCircle, RefreshCw, BookOpen, HelpCircle } from 'lucide-react'
+import { Play, Pause, ArrowRight, AlertCircle, RefreshCw, BookOpen, HelpCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-
-// Mock questions for demonstration
-const mockQuestions = [
-  "Explain the concept of virtual DOM in React and how it improves performance.",
-  "What are the key differences between SQL and NoSQL databases?",
-  "Describe the working of HTTP protocol and its main request methods.",
-  "Explain the concept of time complexity in algorithms and give examples.",
-  "What is the difference between supervised and unsupervised learning in machine learning?",
-]
 
 export default function Exam() {
   const router = useRouter()
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [currentQuestion, setCurrentQuestion] = useState(mockQuestions[0])
+  const [currentQuestion, setCurrentQuestion] = useState(""); // This will hold the audio URL
+  const [questionText, setQuestionText] = useState("");     // This will hold the question text
   const [isRecording, setIsRecording] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [timeLeft, setTimeLeft] = useState(60) // 60 seconds per question
   const [answer, setAnswer] = useState("")
   const [showAlert, setShowAlert] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [processingAction, setProcessingAction] = useState<string | null>(null)
   const [helperContent, setHelperContent] = useState<string | null>(null)
-  
+  const [totalQuestions, setTotalQuestions] = useState(0)
+  const [session_id, setsession_id] = useState<string | null>(null)
+
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Initialize with the first question
+  // Get session ID from localStorage
   useEffect(() => {
-    setCurrentQuestion(mockQuestions[currentQuestionIndex])
-  }, [currentQuestionIndex])
+    const storedsession_id = localStorage.getItem("session_id")
+    if (storedsession_id) {
+      setsession_id(storedsession_id)
+    } else {
+      console.error("No session ID found in localStorage")
+      setError("Session not found. Please go back and select topics again.")
+    }
+  }, [])
+
+  // Fetch question from backend when currentQuestionIndex changes or on initial load
+  useEffect(() => {
+    if (audioRef.current && currentQuestion) {
+      // Assuming 'currentQuestion' now holds the audio URL correctly
+      audioRef.current.src = currentQuestion // Use currentQuestion which should be data.audioUrl
+    }
+  }, [audioRef.current, currentQuestion]) // Depend on audioRef.current and currentQuestion
+
+ // Fetch question from backend
+useEffect(() => {
+  if (!session_id) return;
+
+  const fetchQuestion = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/questions`;
+      const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`);
+
+      if (!response.ok) {
+        throw new Error(`Error fetching question: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      setCurrentQuestion(data.audioUrl);       // Holds the audio URL
+      setQuestionText(data.questionText);   // Holds the question text
+
+      if (data.totalQuestions) {
+        setTotalQuestions(data.totalQuestions);
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching question:", err);
+      setError(err instanceof Error ? err.message : "An unknown error occurred");
+      setLoading(false);
+    }
+  };
+
+  fetchQuestion();
+}, [currentQuestionIndex, session_id]);
+
+// Set audio source and attempt to play when audioRef.current and currentQuestion are available
+useEffect(() => {
+  if (audioRef.current && currentQuestion) {
+    audioRef.current.src = currentQuestion;
+    console.log("Audio source URL set (useEffect):", currentQuestion);
+    audioRef.current.play()
+      .then(() => {
+        setIsPlaying(true);
+      })
+      .catch(error => {
+        console.error("Autoplay prevented or error during play:", error);
+        // Optionally, inform the user to click play.
+      });
+  }
+}, [audioRef.current, currentQuestion]);
+
+// Set audio source and attempt to play when audioRef.current and currentQuestion are available
+useEffect(() => {
+  if (audioRef.current && currentQuestion) {
+    audioRef.current.src = currentQuestion;
+    console.log("Audio source URL set (useEffect):", currentQuestion);
+    audioRef.current.play()
+      .then(() => {
+        setIsPlaying(true);
+      })
+      .catch(error => {
+        console.error("Autoplay prevented or error during play:", error);
+        // Optionally, inform the user to click play.
+      });
+  }
+}, [audioRef.current, currentQuestion]);
 
   // Auto-start recording after question is played
   useEffect(() => {
@@ -57,12 +133,12 @@ export default function Exam() {
           startRecording()
         }, 3000)
       }
-      
-      audioRef.current.addEventListener('ended', handleAudioEnd)
-      
+
+      audioRef.current.addEventListener("ended", handleAudioEnd)
+
       return () => {
         if (audioRef.current) {
-          audioRef.current.removeEventListener('ended', handleAudioEnd)
+          audioRef.current.removeEventListener("ended", handleAudioEnd)
         }
       }
     }
@@ -81,7 +157,7 @@ export default function Exam() {
     return () => {
       stopRecording()
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current.getTracks().forEach((track) => track.stop())
       }
       if (recordingTimeoutRef.current) {
         clearTimeout(recordingTimeoutRef.current)
@@ -106,86 +182,110 @@ export default function Exam() {
 
   // Recording functionality
   const startRecording = async () => {
+    console.log("startRecording called...");
     try {
-      // Stop any existing recording
-      stopRecording()
-      
-      // Clear any helper content
-      setHelperContent(null)
-      
-      // Get microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
-      
-      const mediaRecorder = new MediaRecorder(stream)
-      mediaRecorderRef.current = mediaRecorder
-      audioChunksRef.current = []
-
+      stopRecording(); // Ensure any previous recording is stopped
+      setHelperContent(null);
+      console.log("Existing recording stopped.");
+  
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      console.log("User media stream obtained:", stream);
+      stream.getAudioTracks().forEach(track => console.log("Audio track enabled:", track.enabled));
+  
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+  
       mediaRecorder.ondataavailable = (event) => {
+        console.log("ondataavailable event fired. Data size:", event.data.size);
         if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
+          audioChunksRef.current.push(event.data);
+          console.log("Audio chunk added. Total chunks:", audioChunksRef.current.length);
         }
-      }
+      };
 
-      mediaRecorder.onstop = () => {
-        // Only process the recording if we have data and we're not in the middle of another action
+      mediaRecorder.onstop = async () => {
+        console.log("Recording stopped. Processing audio chunks:", audioChunksRef.current.length);
         if (audioChunksRef.current.length > 0 && !processingAction) {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' })
-          
-          // For preview (optional)
-          if (audioRef.current) {
-            const audioUrl = URL.createObjectURL(audioBlob)
-            audioRef.current.src = audioUrl
+          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/mp3" });
+          console.log("Final audio Blob created. Size:", audioBlob.size, "Type:", audioBlob.type);         
+          try {
+            // Send the audio to the backend for transcription
+            const formData = new FormData()
+            formData.append("audio", audioBlob, `question_${currentQuestionIndex + 1}.mp3`)
+            formData.append("session_id", session_id || "")
+            // TODO : Send question text 
+            formData.append("question_text", currentQuestion)
+
+            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/transcribe`
+            const response = await fetch(apiUrl, {
+              method: "POST",
+              body: formData,
+            })
+
+            if (!response.ok) {
+              throw new Error(`Error transcribing audio: ${response.status}`)
+            }
+
+            const data = await response.json()
+            setAnswer(data.transcription)
+          } catch (error) {
+            console.error("Error transcribing audio:", error)
+            setAnswer("Error transcribing your answer. The audio has been recorded and will be processed.")
           }
-          
-          // Mock transcription - in a real app, this would come from the backend
-          setAnswer("This is a mock answer that would come from the speech-to-text API.")
         }
       }
 
-      mediaRecorder.start()
-      setIsRecording(true)
-    } catch (error) {
-      console.error("Error starting recording:", error)
+      mediaRecorder.start();
+      setIsRecording(true);
+      console.log("Recording started successfully. MediaRecorder state:", mediaRecorderRef.current?.state);
+  
+    } catch (error: any) {
+      console.error("Error starting recording:", error);
+      setError("Could not access microphone. Please check your browser permissions.");
+      console.error("Error details:", error?.name, error?.message, error?.constraint);
     }
-  }
-
+  };
+  
   const stopRecording = () => {
+    console.log("stopRecording called...");
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop()
-      setIsRecording(false)
-      
-      // Stop all tracks
+      console.log("Stopping recording. MediaRecorder state before stop:", mediaRecorderRef.current?.state);
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      console.log("MediaRecorder stopped.");
+  
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
-        streamRef.current = null
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        console.log("Audio tracks stopped and streamRef reset.");
       }
+    } else {
+      console.log("No active recording to stop.");
     }
-  }
-
+  };
   // Helper button handlers
   const handleRephrase = async () => {
+    if (!session_id) return
+
     try {
       stopRecording() // Stop current recording
       setProcessingAction("rephrase")
       setHelperContent("Getting rephrased question...")
-      
-      // Mock API call - simulate loading
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // Mock response
-      const rephrased = `Could you please explain how the ${
-        currentQuestion.includes("virtual DOM") ? "virtual DOM concept works in React and its performance benefits" :
-        currentQuestion.includes("SQL") ? "SQL and NoSQL database paradigms differ from each other" :
-        currentQuestion.includes("HTTP") ? "HTTP protocol functions and what its primary request methods are" :
-        currentQuestion.includes("time complexity") ? "concept of algorithmic time complexity works and provide some examples" :
-        "supervised and unsupervised learning approaches differ in machine learning"
-      }?`
-      
-      setCurrentQuestion(rephrased)
+
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/rephrase`
+      const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
+
+      if (!response.ok) {
+        throw new Error(`Error rephrasing question: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setCurrentQuestion(data.rephrased)
       setHelperContent(null)
       setProcessingAction(null)
-      
+
       // Start recording after a delay
       if (recordingTimeoutRef.current) {
         clearTimeout(recordingTimeoutRef.current)
@@ -201,29 +301,24 @@ export default function Exam() {
   }
 
   const handleTopicContext = async () => {
+    if (!session_id) return
+
     try {
       stopRecording() // Stop current recording
       setProcessingAction("context")
       setHelperContent("Getting topic context...")
-      
-      // Mock API call - simulate loading
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // Mock response based on current question
-      const contextMap: {[key: string]: string} = {
-        "virtual DOM": "The Virtual DOM is a programming concept where a virtual representation of a UI is kept in memory and synced with the 'real' DOM. It's a pattern implemented by libraries like React for performance optimization.",
-        "SQL": "Database systems are categorized primarily as SQL (relational) or NoSQL (non-relational). They differ in data structure, schema flexibility, scaling, and query capabilities.",
-        "HTTP": "HTTP (Hypertext Transfer Protocol) is the foundation of data communication on the web. It follows a client-server model with stateless request-response cycles.",
-        "time complexity": "Time complexity is a concept in computer science that describes the amount of time an algorithm takes to run as a function of the length of the input. It's typically expressed using Big O notation.",
-        "supervised": "Machine learning approaches are broadly categorized as supervised (using labeled data) or unsupervised (finding patterns in unlabeled data). They serve different purposes in data analysis and prediction."
+
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/context`
+      const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
+
+      if (!response.ok) {
+        throw new Error(`Error getting topic context: ${response.status}`)
       }
-      
-      // Find which context to show based on the question
-      let contextKey = Object.keys(contextMap).find(key => currentQuestion.toLowerCase().includes(key.toLowerCase())) || "virtual DOM"
-      
-      setHelperContent(contextMap[contextKey])
+
+      const data = await response.json()
+      setHelperContent(data.context)
       setProcessingAction(null)
-      
+
       // Start recording after a delay
       if (recordingTimeoutRef.current) {
         clearTimeout(recordingTimeoutRef.current)
@@ -239,29 +334,24 @@ export default function Exam() {
   }
 
   const handleHint = async () => {
+    if (!session_id) return
+
     try {
       stopRecording() // Stop current recording
       setProcessingAction("hint")
       setHelperContent("Getting hint...")
-      
-      // Mock API call - simulate loading
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // Mock response based on current question
-      const hintMap: {[key: string]: string} = {
-        "virtual DOM": "Think about how comparing two JavaScript objects is more efficient than directly manipulating the browser's DOM.",
-        "SQL": "Consider how data relationships and ACID properties differ between these database types.",
-        "HTTP": "Remember the common methods like GET, POST, PUT, DELETE and their intended uses.",
-        "time complexity": "Consider how Big O notation represents the worst-case scenario for algorithm performance.",
-        "supervised": "Think about the presence or absence of labeled training data as the key differentiator."
+
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/hint`
+      const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
+
+      if (!response.ok) {
+        throw new Error(`Error getting hint: ${response.status}`)
       }
-      
-      // Find which hint to show based on the question
-      let hintKey = Object.keys(hintMap).find(key => currentQuestion.toLowerCase().includes(key.toLowerCase())) || "virtual DOM"
-      
-      setHelperContent(hintMap[hintKey])
+
+      const data = await response.json()
+      setHelperContent(data.hint)
       setProcessingAction(null)
-      
+
       // Start recording after a delay
       if (recordingTimeoutRef.current) {
         clearTimeout(recordingTimeoutRef.current)
@@ -277,9 +367,11 @@ export default function Exam() {
   }
 
   const handleNextQuestion = async () => {
+    if (!session_id) return
+
     // Stop any active recording
     stopRecording()
-    
+
     if (audioChunksRef.current.length === 0 && !answer) {
       setShowAlert(true)
       return
@@ -287,28 +379,48 @@ export default function Exam() {
 
     try {
       setLoading(true)
-      
-      // Mock API call - simulate loading
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      if (currentQuestionIndex >= mockQuestions.length - 1) {
+
+      // Create FormData with the audio recording
+      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/mp3" })
+      const formData = new FormData()
+      formData.append("audio", audioBlob, `question_${currentQuestionIndex + 1}.mp3`)
+      formData.append("session_id", session_id)
+      // TODO Handle the Zero index
+      formData.append("question_index", currentQuestionIndex.toString())
+      formData.append("question_text", currentQuestion)
+      // formData.append("answer_text", answer)
+
+      // Submit the answer to the backend
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/submit-answer`
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error submitting answer: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Check if this was the last question
+      if (data.isLastQuestion || (totalQuestions > 0 && currentQuestionIndex >= totalQuestions)) {
         // Last question - redirect to results
         router.push("/results")
         return
       }
-      
+
       // Move to next question
-      setCurrentQuestionIndex(prev => prev + 1)
+      setCurrentQuestionIndex((prev) => prev + 1)
       setAnswer("")
       setTimeLeft(60)
       setShowAlert(false)
       setHelperContent(null)
       audioChunksRef.current = []
-      setLoading(false)
-      
-      // Auto-play would happen here in a real implementation
     } catch (error) {
       console.error("Error submitting answer:", error)
+      setError("Failed to submit your answer. Please try again.")
+    } finally {
       setLoading(false)
     }
   }
@@ -321,14 +433,35 @@ export default function Exam() {
   }
 
   // Calculate progress
-  const progress = ((currentQuestionIndex) / mockQuestions.length) * 100
+  const progress = totalQuestions > 0 ? (currentQuestionIndex / totalQuestions) * 100 : 0
 
-  if (loading) {
+  if (loading && currentQuestionIndex === 0) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-b from-background to-secondary/20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Loading...</p>
+          <p>Loading your exam...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (error) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-b from-background to-secondary/20">
+        <div className="max-w-md w-full">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              {error}
+              <div className="mt-4">
+                <Button variant="outline" asChild>
+                  <a href="/topics">Go back to topic selection</a>
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
         </div>
       </main>
     )
@@ -346,57 +479,56 @@ export default function Exam() {
               </Badge>
             </div>
             <CardDescription>
-              Question {currentQuestionIndex + 1} of {mockQuestions.length}
+              Question {currentQuestionIndex + 1} {totalQuestions > 0 ? `of ${totalQuestions}` : ""}
             </CardDescription>
             <Progress value={progress} className="h-2" />
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="bg-muted p-4 rounded-lg">
               <h3 className="font-medium mb-2">Question:</h3>
-              <p>{currentQuestion}</p>
+              <p>{questionText}</p>
 
               <div className="flex items-center mt-4 space-x-2">
-                <Button size="sm" variant="outline" onClick={isPlaying ? pauseQuestion : playQuestion}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={isPlaying ? pauseQuestion : playQuestion}
+                  disabled={loading}
+                >
                   {isPlaying ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
                   {isPlaying ? "Pause" : "Play"} Question
                 </Button>
-                {/* Using a placeholder audio for demo purposes */}
-                <audio 
-                  ref={audioRef} 
-                  src="/placeholder.mp3" 
+                <audio
+                  ref={audioRef}
                   onEnded={() => setIsPlaying(false)}
                   onPause={() => setIsPlaying(false)}
+                  autoPlay
                 />
               </div>
             </div>
 
             {/* Helper buttons */}
             <div className="flex flex-wrap gap-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={handleRephrase}
                 disabled={loading || processingAction !== null}
               >
-                <RefreshCw className="h-4 w-4 mr-2" /> 
+                <RefreshCw className="h-4 w-4 mr-2" />
                 Rephrase Question
               </Button>
-              <Button 
-                size="sm" 
-                variant="outline" 
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={handleTopicContext}
                 disabled={loading || processingAction !== null}
               >
-                <BookOpen className="h-4 w-4 mr-2" /> 
+                <BookOpen className="h-4 w-4 mr-2" />
                 Topic Context
               </Button>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={handleHint}
-                disabled={loading || processingAction !== null}
-              >
-                <HelpCircle className="h-4 w-4 mr-2" /> 
+              <Button size="sm" variant="outline" onClick={handleHint} disabled={loading || processingAction !== null}>
+                <HelpCircle className="h-4 w-4 mr-2" />
                 Hint
               </Button>
             </div>
@@ -405,9 +537,14 @@ export default function Exam() {
             {helperContent && (
               <div className="bg-secondary/30 p-4 rounded-lg">
                 <h3 className="font-medium mb-2">
-                  {processingAction === "rephrase" ? "Rephrased Question" : 
-                   processingAction === "context" ? "Topic Context" : 
-                   processingAction === "hint" ? "Hint" : "Additional Information"}:
+                  {processingAction === "rephrase"
+                    ? "Rephrased Question"
+                    : processingAction === "context"
+                      ? "Topic Context"
+                      : processingAction === "hint"
+                        ? "Hint"
+                        : "Additional Information"}
+                  :
                 </h3>
                 <p>{helperContent}</p>
               </div>
@@ -443,19 +580,24 @@ export default function Exam() {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error</AlertTitle>
-                <AlertDescription>No answer recorded. Please ensure your microphone is working and try again.</AlertDescription>
+                <AlertDescription>
+                  No answer recorded. Please ensure your microphone is working and try again.
+                </AlertDescription>
               </Alert>
             )}
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button onClick={handleNextQuestion} disabled={loading || processingAction !== null}>
-              {currentQuestionIndex < mockQuestions.length - 1 ? (
+              {loading && (
+                <div className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full" />
+              )}
+              {totalQuestions > 0 && currentQuestionIndex >= totalQuestions - 1 ? (
                 <>
-                  Next Question <ArrowRight className="ml-2 h-4 w-4" />
+                  Finish Exam <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               ) : (
                 <>
-                  Finish Exam <ArrowRight className="ml-2 h-4 w-4" />
+                  Next Question <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
             </Button>

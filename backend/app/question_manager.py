@@ -16,6 +16,13 @@ class QuestionManager:
         # Load the filtered question bank
         self.filtered_qb = self._load_filtered_qb()
         self.question_prompt = None
+        
+        self.question_text_prev = None
+        self.answer_text = None
+        self.feedback = None
+    
+    def load_ans_feedback_db(self):
+        pass
     
     def _load_filtered_qb(self):
         qb_filter = FilterQuestionBank(self.session_id)
@@ -31,9 +38,11 @@ class QuestionManager:
             print(f"Audio directory '{audio_dir}' already exists.")
     
     def question_prompt_fetch(self): 
-        self.prompt_generator = PromptGenerator(self.filtered_qb, self.question_no)
-        self.question_prompt = self.prompt_generator.generate_prompt_question() 
-        
+        self.prompt_generator = PromptGenerator()
+        if self.question_no == 1:
+            self.question_prompt = self.prompt_generator.generate_first_question_prompt(self.filtered_qb) 
+        else:
+            self.question_prompt = self.prompt_generator.generate_subsequent_question_prompt(self.filtered_qb,self.question_text_prev, self.answer_text, self.feedback)
     def question_text_fetch(self): 
         print("generating Question......")
         groq_api = GroqApi()
