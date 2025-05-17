@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import Dict, List
+from typing import Dict, List, Optional
 from datetime import datetime
 import os
 import json
@@ -47,6 +47,26 @@ class QuestionResponse(BaseModel):
     questionText: str
     audioUrl: str
     totalQuestions: int
+
+class AnswerResult(BaseModel):
+    question_no: int
+    question_text: str
+    answer_text: Optional[str] = None
+    score: float
+    max_score: float
+
+class ExamResult(BaseModel):
+    student_name: str
+    roll_number: str
+    student_id: str
+    session_id: str
+    answers: List[AnswerResult]
+    total_score: float
+    max_score: float
+
+# Define constants for file paths
+DATA_SESSIONS_FOLDER = "data/sessions"
+DATA_ANSWERS_FOLDER = "data/answers"
 
 
 @app.post("/login")
@@ -126,7 +146,7 @@ def get_question(session_id: str = Query(..., description="The ID of the exam se
         return QuestionResponse(
             questionText = question_text,
             audioUrl = f"http://localhost:8000/audio/{session_id}_question_{question_index}_audio.mp3",
-            totalQuestions = 5  # Replace with dynamic count if available
+            totalQuestions = 2  # Replace with dynamic count if available
         )
 
     except HTTPException as e:
@@ -198,3 +218,70 @@ def submit_answer(
             status_code=500,
             content={"error": f"Failed to process submission: {str(e)}"}
         )
+
+@app.get("/results", response_model=ExamResult)
+def get_results(session_id: str = Query(..., description="The session ID of the student")):
+    session_file_path = f"data/sessions/{session_id}.json"
+    answer_file_path = f"data/answers/{session_id}_full.json"
+
+    if not os.path.exists(session_file_path):
+        raise HTTPException(status_code=404, detail="Session file not found")
+
+    try:
+        with open(session_file_path, "r", encoding="utf-8") as session_file:
+            session_data = json.load(session_file)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read session file: {str(e)}")
+
+    # student_id = session_data.get("student_id")  #  <-- Potential Issue
+    student_id = str(session_data.get("student_id"))  # Ensure student_id is a string.
+    session_id = session_data.get("session_id")
+
+    # Fetch additional student info from database (optional) or mock for now
+    # Here assuming the session file includes everything needed
+    student_name = session_data.get("name", "Unknown Student")  # Optional fields
+    roll_number = session_data.get("roll_number", "N/A")
+
+    # Step 2: Load answer file
+    if not os.path.exists(answer_file_path):
+        raise HTTPException(status_code=404, detail="Answer file not found")
+
+    try:
+        with open(answer_file_path, "r", encoding="utf-8") as answer_file:
+            answer_data = json.load(answer_file)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read answer file: {str(e)}")
+
+    answers_raw = answer_data.get("answers", [])
+
+    # Build AnswerResult list and calculate total scores
+    answers = []
+    total_score = 0
+    max_score = 0
+
+    for answer in answers_raw:
+        score = answer.get("score", 0)
+        max_s = 10  # Default max_score
+        total_score += score
+        max_score += max_s
+
+        answers.append(
+            AnswerResult(
+                question_no=answer.get("question_no", 0),
+                question_text=answer.get("question_text", "Unknown question"),
+                answer_text=answer.get("answer_text", ""),
+                score=score,
+                max_score=max_s,
+            )
+        )
+
+    result = ExamResult(
+        student_name=student_name,
+        roll_number=roll_number,
+        student_id=student_id,
+        session_id=session_id,
+        answers=answers,
+        total_score=total_score,
+        max_score=max_score,
+    )
+    return result

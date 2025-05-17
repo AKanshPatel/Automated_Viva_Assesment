@@ -5,6 +5,7 @@ from models.deepgram_stt_tts import DeepgramAPI
 from models.groq_api_llm import GroqApi
 from database.connection import SessionLocal
 from database.crud import viva_answer_crud
+import json
 
 class QuestionManager:
     def __init__(self, session_id, question_no):
@@ -32,20 +33,50 @@ class QuestionManager:
         qb_filter = FilterQuestionBank(self.session_id)
         return qb_filter.run()
 
-    def load_previous_answer_feedback(self):
-        db = SessionLocal()
-        try:
-            prev_qno = self.question_no - 1
-            result = viva_answer_crud.get_score_feedback_by_question(db, self.session_id, prev_qno)
-            if result:
-                self.question_text_prev = result["question_text"]
-                self.answer_text = result["answer_text"]  # Ensure it's added in your fetch function
-                self.feedback = result["feedback"]
-            else:
-                print("Previous answer data not found.")
-        finally:
-            db.close()
+    # def load_previous_answer_feedback(self):
+    #     db = SessionLocal()
+    #     try:
+    #         prev_qno = self.question_no - 1
+    #         result = viva_answer_crud.get_score_feedback_by_question(db, self.session_id, prev_qno)
+    #         if result:
+    #             self.question_text_prev = result["question_text"]
+    #             self.answer_text = result["answer_text"]  # Ensure it's added in your fetch function
+    #             self.feedback = result["feedback"]
+    #         else:
+    #             print("Previous answer data not found.")
+    #     finally:
+    #         db.close()
 
+    def load_previous_answer_feedback(self):
+        """
+        Fetches the latest previous question and answer details from the session's JSON file.
+
+        Returns:
+            dict: A dictionary containing the question text, answer text and feedback of the latest previous question,
+                or None if no previous question is found.
+                The dictionary will have keys 'question_text_prev', 'answer_text', and 'feedback'.
+        """
+        json_path = os.path.join("data", "answers", f"{self.session_id}_full.json")
+
+        try:
+            with open(json_path, 'r') as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            print(f"File not found: {json_path}")
+            return None
+
+        if "answers" in data and data["answers"]:
+            latest_answer = data["answers"][-1]
+            self.question_text_prev = latest_answer.get("question_text")
+            self.answer_text = latest_answer.get("answer_text")
+            self.feedback = latest_answer.get("feedback")
+            
+        else:
+            print(f"No previous answers found in {json_path}")
+            return None
+
+    
+    
     def question_prompt_fetch(self):
         self.prompt_generator = PromptGenerator()
         if self.question_no == 1:
@@ -55,6 +86,7 @@ class QuestionManager:
             self.question_prompt = self.prompt_generator.generate_subsequent_question_prompt(
                 self.filtered_qb, self.question_text_prev, self.answer_text, self.feedback
             )
+            print(self.question_prompt)
 
     def question_text_fetch(self):
         groq_api = GroqApi()

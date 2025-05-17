@@ -37,7 +37,7 @@ class PromptGenerator:
         Based on the feedback:
         - If the feedback indicates strong performance (high score or positive comments), increase the difficulty of the next question.
         - If the feedback suggests areas for improvement (low score or constructive comments), ask a relevant question that reinforces those areas while remaining aligned with the candidate’s level.
-
+        - Do not repeat the previous question
         Select the next appropriate question **exactly as it appears in the question bank**. Do not modify or rephrase.  
         Return **only** the selected question. Do not add explanations or context.
 
@@ -61,17 +61,13 @@ class PromptGenerator:
         1. Relevance to the question
         2. Completeness of the answer
         3. Clarity and correctness
-
+        4. If the answer is null/ empty assign than 0.
+        
         Assign a score from 1 to 10 based on these criteria.
         Provide brief feedback explaining the score.
 
-        Return the result in plain text using the following key-value pair format:
-            Score: <score>  
-            Feedback: <your_feedback>
-            
-        Example:
-        Score: 7  
-        Feedback: Good explanation, but lacks clarity in the example.
+        return me in following format:
+        x; "Nice answer" 
 
         """
         return prompt_feedback

@@ -12,8 +12,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 export default function Exam() {
   const router = useRouter()
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [currentQuestion, setCurrentQuestion] = useState(""); // This will hold the audio URL
-  const [questionText, setQuestionText] = useState("");     // This will hold the question text
+  const [currentQuestion, setCurrentQuestion] = useState("") // This will hold the audio URL
+  const [questionText, setQuestionText] = useState("") // This will hold the question text
   const [isRecording, setIsRecording] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [timeLeft, setTimeLeft] = useState(60) // 60 seconds per question
@@ -51,73 +51,58 @@ export default function Exam() {
     }
   }, [audioRef.current, currentQuestion]) // Depend on audioRef.current and currentQuestion
 
- // Fetch question from backend
-useEffect(() => {
-  if (!session_id) return;
+  // Fetch question from backend
+  useEffect(() => {
+    if (!session_id) return
 
-  const fetchQuestion = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+    const fetchQuestion = async () => {
+      try {
+        setLoading(true)
+        setError(null)
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/questions`;
-      const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`);
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/questions`
+        const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
 
-      if (!response.ok) {
-        throw new Error(`Error fetching question: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`Error fetching question: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        setCurrentQuestion(data.audioUrl) // Holds the audio URL
+        setQuestionText(data.questionText) // Holds the question text
+
+        if (data.totalQuestions) {
+          setTotalQuestions(data.totalQuestions) // Assuming totalQuestions is returned from the API
+        }
+
+        setLoading(false)
+      } catch (err) {
+        console.error("Error fetching question:", err)
+        setError(err instanceof Error ? err.message : "An unknown error occurred")
+        setLoading(false)
       }
-
-      const data = await response.json();
-
-      setCurrentQuestion(data.audioUrl);       // Holds the audio URL
-      setQuestionText(data.questionText);   // Holds the question text
-
-      if (data.totalQuestions) {
-        setTotalQuestions(data.totalQuestions);
-      }
-
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching question:", err);
-      setError(err instanceof Error ? err.message : "An unknown error occurred");
-      setLoading(false);
     }
-  };
 
-  fetchQuestion();
-}, [currentQuestionIndex, session_id]);
+    fetchQuestion()
+  }, [currentQuestionIndex, session_id])
 
-// Set audio source and attempt to play when audioRef.current and currentQuestion are available
-useEffect(() => {
-  if (audioRef.current && currentQuestion) {
-    audioRef.current.src = currentQuestion;
-    console.log("Audio source URL set (useEffect):", currentQuestion);
-    audioRef.current.play()
-      .then(() => {
-        setIsPlaying(true);
-      })
-      .catch(error => {
-        console.error("Autoplay prevented or error during play:", error);
-        // Optionally, inform the user to click play.
-      });
-  }
-}, [audioRef.current, currentQuestion]);
-
-// Set audio source and attempt to play when audioRef.current and currentQuestion are available
-useEffect(() => {
-  if (audioRef.current && currentQuestion) {
-    audioRef.current.src = currentQuestion;
-    console.log("Audio source URL set (useEffect):", currentQuestion);
-    audioRef.current.play()
-      .then(() => {
-        setIsPlaying(true);
-      })
-      .catch(error => {
-        console.error("Autoplay prevented or error during play:", error);
-        // Optionally, inform the user to click play.
-      });
-  }
-}, [audioRef.current, currentQuestion]);
+  // Set audio source and attempt to play when audioRef.current and currentQuestion are available
+  useEffect(() => {
+    if (audioRef.current && currentQuestion) {
+      audioRef.current.src = currentQuestion
+      console.log("Audio source URL set (useEffect):", currentQuestion)
+      audioRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true)
+        })
+        .catch((error) => {
+          console.error("Autoplay prevented or error during play:", error)
+          // Optionally, inform the user to click play.
+        })
+    }
+  }, [audioRef.current, currentQuestion])
 
   // Auto-start recording after question is played
   useEffect(() => {
@@ -182,216 +167,211 @@ useEffect(() => {
 
   // Recording functionality
   const startRecording = async () => {
-    console.log("startRecording called...");
+    console.log("startRecording called...")
     try {
-      stopRecording(); // Ensure any previous recording is stopped
-      setHelperContent(null);
-      console.log("Existing recording stopped.");
-  
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      console.log("User media stream obtained:", stream);
-      stream.getAudioTracks().forEach(track => console.log("Audio track enabled:", track.enabled));
-  
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-  
+      stopRecording() // Ensure any previous recording is stopped
+      setHelperContent(null)
+      console.log("Existing recording stopped.")
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      console.log("User media stream obtained:", stream)
+      stream.getAudioTracks().forEach((track) => console.log("Audio track enabled:", track.enabled))
+
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
       mediaRecorder.ondataavailable = (event) => {
-        console.log("ondataavailable event fired. Data size:", event.data.size);
+        console.log("ondataavailable event fired. Data size:", event.data.size)
         if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-          console.log("Audio chunk added. Total chunks:", audioChunksRef.current.length);
+          audioChunksRef.current.push(event.data)
+          console.log("Audio chunk added. Total chunks:", audioChunksRef.current.length)
         }
-      };
+      }
 
       mediaRecorder.onstop = async () => {
-        console.log("Recording stopped. Processing audio chunks:", audioChunksRef.current.length);
-        if (audioChunksRef.current.length > 0 && !processingAction) {
-          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/mp3" });
-          console.log("Final audio Blob created. Size:", audioBlob.size, "Type:", audioBlob.type);         
-          try {
-            // Send the audio to the backend for transcription
-            const formData = new FormData()
-            formData.append("audio", audioBlob, `question_${currentQuestionIndex + 1}.mp3`)
-            formData.append("session_id", session_id || "")
-            // TODO : Send question text 
-            formData.append("question_text", currentQuestion)
-
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/transcribe`
-            const response = await fetch(apiUrl, {
-              method: "POST",
-              body: formData,
-            })
-
-            if (!response.ok) {
-              throw new Error(`Error transcribing audio: ${response.status}`)
-            }
-
-            const data = await response.json()
-            setAnswer(data.transcription)
-          } catch (error) {
-            console.error("Error transcribing audio:", error)
-            setAnswer("Error transcribing your answer. The audio has been recorded and will be processed.")
-          }
-        }
+        console.log("Recording stopped.")
+        // The transcription will now happen on the backend in /api/submit-answer
       }
 
-      mediaRecorder.start();
-      setIsRecording(true);
-      console.log("Recording started successfully. MediaRecorder state:", mediaRecorderRef.current?.state);
-  
+      mediaRecorder.start()
+      setIsRecording(true)
+      console.log("Recording started successfully. MediaRecorder state:", mediaRecorderRef.current?.state)
     } catch (error: any) {
-      console.error("Error starting recording:", error);
-      setError("Could not access microphone. Please check your browser permissions.");
-      console.error("Error details:", error?.name, error?.message, error?.constraint);
+      console.error("Error starting recording:", error)
+      setError("Could not access microphone. Please check your browser permissions.")
+      console.error("Error details:", error?.name, error?.message, error?.constraint)
     }
-  };
-  
+  }
+
+  // Modified to return a promise that resolves when recording is stopped
   const stopRecording = () => {
-    console.log("stopRecording called...");
-    if (mediaRecorderRef.current && isRecording) {
-      console.log("Stopping recording. MediaRecorder state before stop:", mediaRecorderRef.current?.state);
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      console.log("MediaRecorder stopped.");
-  
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-        console.log("Audio tracks stopped and streamRef reset.");
+    return new Promise<void>((resolve) => {
+      console.log("stopRecording called...")
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        console.log("Stopping recording. MediaRecorder state before stop:", mediaRecorderRef.current?.state)
+
+        // Add event listener to handle when recording actually stops
+        mediaRecorderRef.current.addEventListener(
+          "stop",
+          () => {
+            console.log("MediaRecorder stop event fired.")
+            resolve()
+          },
+          { once: true },
+        )
+
+        mediaRecorderRef.current.stop()
+        setIsRecording(false)
+        console.log("MediaRecorder stop method called.")
+
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop())
+          streamRef.current = null
+          console.log("Audio tracks stopped and streamRef reset.")
+        }
+      } else {
+        console.log("No active recording to stop.")
+        resolve() // Resolve immediately if no recording is active
       }
-    } else {
-      console.log("No active recording to stop.");
-    }
-  };
-  // Helper button handlers
-  const handleRephrase = async () => {
-    if (!session_id) return
-
-    try {
-      stopRecording() // Stop current recording
-      setProcessingAction("rephrase")
-      setHelperContent("Getting rephrased question...")
-
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/rephrase`
-      const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
-
-      if (!response.ok) {
-        throw new Error(`Error rephrasing question: ${response.status}`)
-      }
-
-      const data = await response.json()
-      setCurrentQuestion(data.rephrased)
-      setHelperContent(null)
-      setProcessingAction(null)
-
-      // Start recording after a delay
-      if (recordingTimeoutRef.current) {
-        clearTimeout(recordingTimeoutRef.current)
-      }
-      recordingTimeoutRef.current = setTimeout(() => {
-        startRecording()
-      }, 3000)
-    } catch (error) {
-      console.error("Error rephrasing question:", error)
-      setHelperContent("Failed to rephrase question. Please try again.")
-      setProcessingAction(null)
-    }
+    })
   }
 
-  const handleTopicContext = async () => {
-    if (!session_id) return
+  // // Helper button handlers
+  // const handleRephrase = async () => {
+  //   if (!session_id) return
 
-    try {
-      stopRecording() // Stop current recording
-      setProcessingAction("context")
-      setHelperContent("Getting topic context...")
+  //   try {
+  //     await stopRecording() // Stop current recording
+  //     setProcessingAction("rephrase")
+  //     setHelperContent("Getting rephrased question...")
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/context`
-      const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
+  //     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/rephrase`
+  //     const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
 
-      if (!response.ok) {
-        throw new Error(`Error getting topic context: ${response.status}`)
-      }
+  //     if (!response.ok) {
+  //       throw new Error(`Error rephrasing question: ${response.status}`)
+  //     }
 
-      const data = await response.json()
-      setHelperContent(data.context)
-      setProcessingAction(null)
+  //     const data = await response.json()
+  //     setCurrentQuestion(data.rephrased)
+  //     setHelperContent(null)
+  //     setProcessingAction(null)
 
-      // Start recording after a delay
-      if (recordingTimeoutRef.current) {
-        clearTimeout(recordingTimeoutRef.current)
-      }
-      recordingTimeoutRef.current = setTimeout(() => {
-        startRecording()
-      }, 5000) // Give student time to read the context
-    } catch (error) {
-      console.error("Error getting topic context:", error)
-      setHelperContent("Failed to get topic context. Please try again.")
-      setProcessingAction(null)
-    }
-  }
+  //     // Start recording after a delay
+  //     if (recordingTimeoutRef.current) {
+  //       clearTimeout(recordingTimeoutRef.current)
+  //     }
+  //     recordingTimeoutRef.current = setTimeout(() => {
+  //       startRecording()
+  //     }, 3000)
+  //   } catch (error) {
+  //     console.error("Error rephrasing question:", error)
+  //     setHelperContent("Failed to rephrase question. Please try again.")
+  //     setProcessingAction(null)
+  //   }
+  // }
 
-  const handleHint = async () => {
-    if (!session_id) return
+  // const handleTopicContext = async () => {
+  //   if (!session_id) return
 
-    try {
-      stopRecording() // Stop current recording
-      setProcessingAction("hint")
-      setHelperContent("Getting hint...")
+  //   try {
+  //     await stopRecording() // Stop current recording
+  //     setProcessingAction("context")
+  //     setHelperContent("Getting topic context...")
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/hint`
-      const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
+  //     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/context`
+  //     const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
 
-      if (!response.ok) {
-        throw new Error(`Error getting hint: ${response.status}`)
-      }
+  //     if (!response.ok) {
+  //       throw new Error(`Error getting topic context: ${response.status}`)
+  //     }
 
-      const data = await response.json()
-      setHelperContent(data.hint)
-      setProcessingAction(null)
+  //     const data = await response.json()
+  //     setHelperContent(data.context)
+  //     setProcessingAction(null)
 
-      // Start recording after a delay
-      if (recordingTimeoutRef.current) {
-        clearTimeout(recordingTimeoutRef.current)
-      }
-      recordingTimeoutRef.current = setTimeout(() => {
-        startRecording()
-      }, 5000) // Give student time to read the hint
-    } catch (error) {
-      console.error("Error getting hint:", error)
-      setHelperContent("Failed to get hint. Please try again.")
-      setProcessingAction(null)
-    }
-  }
+  //     // Start recording after a delay
+  //     if (recordingTimeoutRef.current) {
+  //       clearTimeout(recordingTimeoutRef.current)
+  //     }
+  //     recordingTimeoutRef.current = setTimeout(() => {
+  //       startRecording()
+  //     }, 5000) // Give student time to read the context
+  //   } catch (error) {
+  //     console.error("Error getting topic context:", error)
+  //     setHelperContent("Failed to get topic context. Please try again.")
+  //     setProcessingAction(null)
+  //   }
+  // }
+
+  // const handleHint = async () => {
+  //   if (!session_id) return
+
+  //   try {
+  //     await stopRecording() // Stop current recording
+  //     setProcessingAction("hint")
+  //     setHelperContent("Getting hint...")
+
+  //     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/hint`
+  //     const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
+
+  //     if (!response.ok) {
+  //       throw new Error(`Error getting hint: ${response.status}`)
+  //     }
+
+  //     const data = await response.json()
+  //     setHelperContent(data.hint)
+  //     setProcessingAction(null)
+
+  //     // Start recording after a delay
+  //     if (recordingTimeoutRef.current) {
+  //       clearTimeout(recordingTimeoutRef.current)
+  //     }
+  //     recordingTimeoutRef.current = setTimeout(() => {
+  //       startRecording()
+  //     }, 5000) // Give student time to read the hint
+  //   } catch (error) {
+  //     console.error("Error getting hint:", error)
+  //     setHelperContent("Failed to get hint. Please try again.")
+  //     setProcessingAction(null)
+  //   }
+  // }
 
   const handleNextQuestion = async () => {
     if (!session_id) return
 
-    // Stop any active recording
-    stopRecording()
-
-    if (audioChunksRef.current.length === 0 && !answer) {
-      setShowAlert(true)
-      return
-    }
-
     try {
       setLoading(true)
+
+      // Stop any active recording and wait for it to complete
+      await stopRecording()
+
+      // Check if we have audio data
+      if (audioChunksRef.current.length === 0 && !answer) {
+        setShowAlert(true)
+        setLoading(false)
+        return
+      }
 
       // Create FormData with the audio recording
       const audioBlob = new Blob(audioChunksRef.current, { type: "audio/mp3" })
       const formData = new FormData()
       formData.append("audio", audioBlob, `question_${currentQuestionIndex + 1}.mp3`)
       formData.append("session_id", session_id)
-      // TODO Handle the Zero index
-      formData.append("question_index", currentQuestionIndex.toString())
-      formData.append("question_text", currentQuestion)
-      // formData.append("answer_text", answer)
+      formData.append("question_index", (currentQuestionIndex + 1).toString())
+      formData.append("question_text", questionText)
+
+      console.log("Submitting answer to backend:", {
+        session_id,
+        question_index: currentQuestionIndex + 1,
+        question_text: questionText,
+        audio_size: audioBlob.size,
+      })
 
       // Submit the answer to the backend
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/submit-answer`
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/submit`
       const response = await fetch(apiUrl, {
         method: "POST",
         body: formData,
@@ -402,27 +382,28 @@ useEffect(() => {
       }
 
       const data = await response.json()
+      console.log("Answer submitted successfully:", data)
 
       // Check if this was the last question
-      if (data.isLastQuestion || (totalQuestions > 0 && currentQuestionIndex >= totalQuestions)) {
+      if (data.isLastQuestion || (totalQuestions > 0 && currentQuestionIndex  >= totalQuestions - 1 )) {
         // Last question - redirect to results
         router.push("/results")
         return
       }
 
-      // Move to next question
-      setCurrentQuestionIndex((prev) => prev + 1)
-      setAnswer("")
-      setTimeLeft(60)
-      setShowAlert(false)
-      setHelperContent(null)
-      audioChunksRef.current = []
+
+        setCurrentQuestionIndex((prev) => prev + 1);
+        setAnswer("");
+        setTimeLeft(60);
+        setShowAlert(false);
+        setHelperContent(null);
+        audioChunksRef.current = [] // Clear audio chunks for the next question
+        setLoading(false); // Stop loading after the state update;
+   // Clear audio chunks for next question
     } catch (error) {
       console.error("Error submitting answer:", error)
       setError("Failed to submit your answer. Please try again.")
-    } finally {
-      setLoading(false)
-    }
+    } setLoading(false)
   }
 
   // Format time as MM:SS
@@ -507,52 +488,9 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Helper buttons */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleRephrase}
-                disabled={loading || processingAction !== null}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Rephrase Question
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleTopicContext}
-                disabled={loading || processingAction !== null}
-              >
-                <BookOpen className="h-4 w-4 mr-2" />
-                Topic Context
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleHint} disabled={loading || processingAction !== null}>
-                <HelpCircle className="h-4 w-4 mr-2" />
-                Hint
-              </Button>
-            </div>
-
-            {/* Helper content display */}
-            {helperContent && (
-              <div className="bg-secondary/30 p-4 rounded-lg">
-                <h3 className="font-medium mb-2">
-                  {processingAction === "rephrase"
-                    ? "Rephrased Question"
-                    : processingAction === "context"
-                      ? "Topic Context"
-                      : processingAction === "hint"
-                        ? "Hint"
-                        : "Additional Information"}
-                  :
-                </h3>
-                <p>{helperContent}</p>
-              </div>
-            )}
-
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-medium">Your Answer:</h3>
+                <h3 className="font-medium">Instructions:</h3>
                 {isRecording && (
                   <Badge variant="outline" className="animate-pulse">
                     Recording...
