@@ -1,11 +1,11 @@
 # viva_answer_crud.py
 from sqlalchemy.orm import Session
 from database.models.viva_answer import VivaAnswer  # This is your model
-from database.schemas.viva_answer_schema import VivaAnswerSchema  # This is your schema
+from database.schemas.viva_answer_schema import VivaAnswerBase  # This is your schema
 
-def add_viva_answer(db: Session, answer: VivaAnswerSchema):
+def add_viva_answer(db: Session, answer: VivaAnswerBase):
     db_answer = VivaAnswer(
-        student_id=answer.student_id,
+        response_id=answer.response_id,
         session_id=answer.session_id,
         question_no=answer.question_no,
         question_text=answer.question_text,

@@ -1,17 +1,16 @@
-from sqlalchemy import Column, String, Integer
-from database.connection import Base, engine
+from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy.orm import relationship
+from database import Base
 
 class VivaAnswer(Base):
-    __tablename__ = "VivaAnswer"
+    __tablename__ = 'viva_answers'
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    student_id = Column(Integer, index=True)
-    session_id = Column(String(50), index=True)
-    question_no = Column(String(50), index=True)
-    question_text = Column(String(255), nullable=False)
-    answer_text = Column(String(255), nullable=False)
-    score = Column(Integer, nullable=False)
-    feedback = Column(String(255), nullable=False)
+    response_id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("sessions.session_id"), nullable=False)
+    question_no = Column(Integer)
+    question_text = Column(String, nullable=False)
+    answer_text = Column(String, nullable=False)
+    score = Column(Float, nullable=True)
+    feedback = Column(String, nullable=True)
 
-def create_tables():
-    Base.metadata.create_all(bind=engine)
+    session = relationship("Session", back_populates="viva_answers")

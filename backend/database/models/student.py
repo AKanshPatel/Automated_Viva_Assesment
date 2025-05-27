@@ -1,19 +1,13 @@
-from sqlalchemy import Column, String, Integer
+from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
-from database.connection import Base, engine  # Adjust the path based on your project
+from database import Base  # assumes you have a Base from SQLAlchemy
 
 class Student(Base):
-    __tablename__ = "students"
+    __tablename__ = 'students'
 
-    student_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    student_id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    email = Column(String, nullable=False, unique=True)
-    roll_number = Column(String, nullable=False, unique=True)
+    email = Column(String, unique=True, nullable=False)
+    roll_number = Column(String, unique=True, nullable=False)
 
-    # Relationships (you should define the other side in respective models)
-    # viva_answers = relationship("VivaAnswer", back_populates="student")
-    # performance = relationship("Performance", back_populates="student", uselist=False)
-
-# Function to create tables
-def create_tables():
-    Base.metadata.create_all(bind=engine)
+    sessions = relationship("Session", back_populates="student")

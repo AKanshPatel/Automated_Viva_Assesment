@@ -1,6 +1,5 @@
-# backend/create_tables.py
 from database.connection import Base, engine
-from database.models import student  # import all models here
+import database.models
 
 Base.metadata.create_all(bind=engine)
 print("✅ Tables created successfully")

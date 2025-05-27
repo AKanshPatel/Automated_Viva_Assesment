@@ -57,4 +57,3 @@ def get_student_from_session(session_id):
     if session_id in sessions:
         return sessions[session_id]
     raise HTTPException(status_code=401, detail="Invalid or expired session")
-
