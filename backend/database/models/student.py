@@ -10,4 +10,4 @@ class Student(Base):
     email = Column(String, unique=True, nullable=False)
     roll_number = Column(String, unique=True, nullable=False)
 
-    sessions = relationship("Session", back_populates="student")
+    sessions = relationship("SessionModel", back_populates="student")

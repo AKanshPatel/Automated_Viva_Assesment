@@ -3,8 +3,8 @@ from models.deepgram_stt_tts import DeepgramAPI
 from models.groq_api_llm import GroqApi
 from utils.prompt import PromptGenerator
 import json
-from database.crud import viva_answer_crud 
-from database.schemas.viva_answer_schema import VivaAnswerSchema
+# from database.crud import viva_answer_crud 
+# from database.schemas.viva_answer_schema import VivaAnswerBase
 from database.connection import SessionLocal
 
 

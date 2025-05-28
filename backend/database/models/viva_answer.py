@@ -13,4 +13,4 @@ class VivaAnswer(Base):
     score = Column(Float, nullable=True)
     feedback = Column(String, nullable=True)
 
-    session = relationship("Session", back_populates="viva_answers")
+    session = relationship("SessionModel", back_populates="viva_answers")

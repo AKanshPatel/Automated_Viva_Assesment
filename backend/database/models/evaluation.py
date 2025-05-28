@@ -9,4 +9,4 @@ class Evaluation(Base):
     session_id = Column(Integer, ForeignKey("sessions.session_id"), nullable=False)
     remark = Column(String, nullable=True)
 
-    session = relationship("Session", back_populates="evaluation")
+    session = relationship("SessionModel", back_populates="evaluation")

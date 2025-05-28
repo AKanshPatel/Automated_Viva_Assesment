@@ -7,17 +7,16 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import os
 import json
-import uuid
 from database.connection import get_db
-from database.crud import studentcrud 
 from utils import session_manager 
 from app.question_manager import QuestionManager
 from fastapi.staticfiles import StaticFiles
 from fastapi import File, UploadFile, Form 
 from app.evaluation_manager import EvaluationManager
 
-# from database import SessionLocal
-from database.crud import studentcrud
+# from database import crud
+from database.crud import studentcrud, session_crud
+from database.schemas import session_schema 
 app = FastAPI()
 
 # Enable CORS for frontend
@@ -84,6 +83,23 @@ def login(student_data: StudentLogin, db: Session = Depends(get_db)):
         student_id = db_student.student_id
         # 3. Create session using updated session_manager
         session_id = session_manager.create_session(student_data, student_id)
+        
+        # 4 Add the session data to the session table
+        started_at = datetime.now()
+        # Format as string: "DD/MM/YYYY, HH:MM"
+        formatted_datetime = started_at.strftime("%d/%m/%Y, %H:%M")
+        session_data = session_schema.SessionBase(
+            session_id = session_id,
+            student_id = student_id,
+            started_at = datetime.now(),
+            status = "active",
+            end_at = None    
+        )
+        session_crud.create_session(
+            db = db,
+            session_data = session_data
+        )
+        
         return {
             "message": "Login successful",
             "session_id": session_id

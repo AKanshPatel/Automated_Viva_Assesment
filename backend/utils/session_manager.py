@@ -1,7 +1,6 @@
 import uuid
 import os
 import json
-from datetime import datetime
 from fastapi import HTTPException
 
 SESSION_DIR = "data/sessions"
@@ -26,14 +25,12 @@ def create_session(student_data, student_id: int):
 
     sessions[session_id] = {
         "studentId": student_id,
-        "login_time": datetime.now().isoformat()
     }
 
     _save_json(sessions, SESSION_FILE_PATH)
 
     # Create individual session file with full data
     create_current_session(session_id, student_id, student_data)
-
     return session_id
 
 
@@ -44,7 +41,6 @@ def create_current_session(session_id, student_id, student_data):
         "name": student_data.name,
         "email": student_data.email,
         "roll_number": student_data.roll_number,
-        "login_time": datetime.now().isoformat(),
         "selected_topics": {}  # e.g., {"Unit Name 1": ["Topic A", "Topic B"]}
     }
 
