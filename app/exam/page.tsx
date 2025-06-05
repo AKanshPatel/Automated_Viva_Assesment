@@ -116,7 +116,7 @@ export default function Exam() {
         }
         recordingTimeoutRef.current = setTimeout(() => {
           startRecording()
-        }, 3000)
+        }, 6000)
       }
 
       audioRef.current.addEventListener("ended", handleAudioEnd)
@@ -238,106 +238,106 @@ export default function Exam() {
     })
   }
 
-  // // Helper button handlers
-  // const handleRephrase = async () => {
-  //   if (!session_id) return
+  // Helper button handlers
+  const handleRephrase = async () => {
+    if (!session_id) return
 
-  //   try {
-  //     await stopRecording() // Stop current recording
-  //     setProcessingAction("rephrase")
-  //     setHelperContent("Getting rephrased question...")
+    try {
+      await stopRecording() // Stop current recording
+      setProcessingAction("rephrase")
+      setHelperContent("Getting rephrased question...")
 
-  //     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/rephrase`
-  //     const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/rephrase`
+      const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
 
-  //     if (!response.ok) {
-  //       throw new Error(`Error rephrasing question: ${response.status}`)
-  //     }
+      if (!response.ok) {
+        throw new Error(`Error rephrasing question: ${response.status}`)
+      }
 
-  //     const data = await response.json()
-  //     setCurrentQuestion(data.rephrased)
-  //     setHelperContent(null)
-  //     setProcessingAction(null)
+      const data = await response.json()
+      setCurrentQuestion(data.rephrased)
+      setHelperContent(null)
+      setProcessingAction(null)
 
-  //     // Start recording after a delay
-  //     if (recordingTimeoutRef.current) {
-  //       clearTimeout(recordingTimeoutRef.current)
-  //     }
-  //     recordingTimeoutRef.current = setTimeout(() => {
-  //       startRecording()
-  //     }, 3000)
-  //   } catch (error) {
-  //     console.error("Error rephrasing question:", error)
-  //     setHelperContent("Failed to rephrase question. Please try again.")
-  //     setProcessingAction(null)
-  //   }
-  // }
+      // Start recording after a delay
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current)
+      }
+      recordingTimeoutRef.current = setTimeout(() => {
+        startRecording()
+      }, 3000)
+    } catch (error) {
+      console.error("Error rephrasing question:", error)
+      setHelperContent("Failed to rephrase question. Please try again.")
+      setProcessingAction(null)
+    }
+  }
 
-  // const handleTopicContext = async () => {
-  //   if (!session_id) return
+  const handleTopicContext = async () => {
+    if (!session_id) return
 
-  //   try {
-  //     await stopRecording() // Stop current recording
-  //     setProcessingAction("context")
-  //     setHelperContent("Getting topic context...")
+    try {
+      await stopRecording() // Stop current recording
+      setProcessingAction("context")
+      setHelperContent("Getting topic context...")
 
-  //     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/context`
-  //     const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/context`
+      const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
 
-  //     if (!response.ok) {
-  //       throw new Error(`Error getting topic context: ${response.status}`)
-  //     }
+      if (!response.ok) {
+        throw new Error(`Error getting topic context: ${response.status}`)
+      }
 
-  //     const data = await response.json()
-  //     setHelperContent(data.context)
-  //     setProcessingAction(null)
+      const data = await response.json()
+      setHelperContent(data.context)
+      setProcessingAction(null)
 
-  //     // Start recording after a delay
-  //     if (recordingTimeoutRef.current) {
-  //       clearTimeout(recordingTimeoutRef.current)
-  //     }
-  //     recordingTimeoutRef.current = setTimeout(() => {
-  //       startRecording()
-  //     }, 5000) // Give student time to read the context
-  //   } catch (error) {
-  //     console.error("Error getting topic context:", error)
-  //     setHelperContent("Failed to get topic context. Please try again.")
-  //     setProcessingAction(null)
-  //   }
-  // }
+      // Start recording after a delay
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current)
+      }
+      recordingTimeoutRef.current = setTimeout(() => {
+        startRecording()
+      }, 5000) // Give student time to read the context
+    } catch (error) {
+      console.error("Error getting topic context:", error)
+      setHelperContent("Failed to get topic context. Please try again.")
+      setProcessingAction(null)
+    }
+  }
 
-  // const handleHint = async () => {
-  //   if (!session_id) return
+  const handleHint = async () => {
+    if (!session_id) return
 
-  //   try {
-  //     await stopRecording() // Stop current recording
-  //     setProcessingAction("hint")
-  //     setHelperContent("Getting hint...")
+    try {
+      await stopRecording() // Stop current recording
+      setProcessingAction("hint")
+      setHelperContent("Getting hint...")
 
-  //     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/hint`
-  //     const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/hint`
+      const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
 
-  //     if (!response.ok) {
-  //       throw new Error(`Error getting hint: ${response.status}`)
-  //     }
+      if (!response.ok) {
+        throw new Error(`Error getting hint: ${response.status}`)
+      }
 
-  //     const data = await response.json()
-  //     setHelperContent(data.hint)
-  //     setProcessingAction(null)
+      const data = await response.json()
+      setHelperContent(data.hint)
+      setProcessingAction(null)
 
-  //     // Start recording after a delay
-  //     if (recordingTimeoutRef.current) {
-  //       clearTimeout(recordingTimeoutRef.current)
-  //     }
-  //     recordingTimeoutRef.current = setTimeout(() => {
-  //       startRecording()
-  //     }, 5000) // Give student time to read the hint
-  //   } catch (error) {
-  //     console.error("Error getting hint:", error)
-  //     setHelperContent("Failed to get hint. Please try again.")
-  //     setProcessingAction(null)
-  //   }
-  // }
+      // Start recording after a delay
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current)
+      }
+      recordingTimeoutRef.current = setTimeout(() => {
+        startRecording()
+      }, 5000) // Give student time to read the hint
+    } catch (error) {
+      console.error("Error getting hint:", error)
+      setHelperContent("Failed to get hint. Please try again.")
+      setProcessingAction(null)
+    }
+  }
 
   const handleNextQuestion = async () => {
     if (!session_id) return
@@ -487,6 +487,39 @@ export default function Exam() {
                 />
               </div>
             </div>
+            {/* Helper Buttons Section */}
+            <div className="flex justify-around space-x-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={handleRephrase}
+                disabled={processingAction !== null || isRecording || loading}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {processingAction === "rephrase" ? "Rephrasing..." : "Rephrase"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleTopicContext}
+                disabled={processingAction !== null || isRecording || loading}
+              >
+                <BookOpen className="h-4 w-4 mr-2" />
+                {processingAction === "context" ? "Getting Context..." : "Topic Context"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleHint}
+                disabled={processingAction !== null || isRecording || loading}
+              >
+                <HelpCircle className="h-4 w-4 mr-2" />
+                {processingAction === "hint" ? "Getting Hint..." : "Hint"}
+              </Button>
+            </div>
+            {/* Display Helper Content */}
+            {helperContent && (
+              <Alert className="mt-4">
+                <AlertDescription>{helperContent}</AlertDescription>
+              </Alert>
+            )}          
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">

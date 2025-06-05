@@ -162,9 +162,54 @@ def get_question(session_id: str = Query(..., description="The ID of the exam se
         return QuestionResponse(
             questionText = question_text,
             audioUrl = f"http://localhost:8000/audio/{session_id}_question_{question_index}_audio.mp3",
-            totalQuestions = 2  # Replace with dynamic count if available
+            totalQuestions = 3  # Replace with dynamic count if available
         )
 
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+@app.get("/api/rephrase")
+def get_rephrased_question(
+    session_id: str = Query(..., description="The ID of the exam session"),
+    question_index: int = Query(..., description="The index of the question to retrieve")
+):   
+    try:
+        question_manager = QuestionManager(session_id, question_index)
+        intent_text = question_manager.handle_intent_rephrase()
+        print(intent_text)
+        return {"rephrased": intent_text} 
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+    
+    
+@app.get("/api/hint")
+def get_hint_question(
+    session_id: str = Query(..., description="The ID of the exam session"),
+    question_index: int = Query(..., description="The index of the question to retrieve")
+):
+    try: 
+        question_manager = QuestionManager(session_id, question_index)
+        intent_text = question_manager.handle_intent_hint()
+        return {"hint": intent_text}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+        
+@app.get("/api/context") 
+def get_context_question(
+    session_id: str = Query(..., description="The ID of the exam session"),
+    question_index: int = Query(..., description="The index of the question to retrieve")
+):
+    try: 
+        question_manager = QuestionManager(session_id, question_index)
+        intent_text = question_manager.handle_intent_context()
+        return {"context": intent_text}
     except HTTPException as e:
         raise e
     except Exception as e:

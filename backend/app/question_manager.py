@@ -14,12 +14,15 @@ class QuestionManager:
         self.question_text = None
         self.question_audio_path = f"data/audio/{session_id}_question_{question_no}_audio.mp3"
         self.create_audio_directory()
-
+        self.prompt_generator = PromptGenerator()
+        self.groq_api = GroqApi()
         self.filtered_qb = self._load_filtered_qb()
         self.question_prompt = None
+        self.rephrased_question_text = None
         self.question_text_prev = None
         self.answer_text = None
         self.feedback = None
+        self.hint = None
 
     def create_audio_directory(self):
         audio_dir = os.path.dirname(self.question_audio_path)
@@ -74,25 +77,41 @@ class QuestionManager:
         else:
             print(f"No previous answers found in {json_path}")
             return None
-
-    
     
     def question_prompt_fetch(self):
-        self.prompt_generator = PromptGenerator()
         if self.question_no == 1:
             self.question_prompt = self.prompt_generator.generate_first_question_prompt(self.filtered_qb)
         else:
             self.load_previous_answer_feedback()
+            prev_questions =  self.get_prev_question_json()
             self.question_prompt = self.prompt_generator.generate_subsequent_question_prompt(
-                self.filtered_qb, self.question_text_prev, self.answer_text, self.feedback
+                self.filtered_qb, self.question_text_prev, self.answer_text, self.feedback, prev_questions
             )
             print(self.question_prompt)
 
     def question_text_fetch(self):
-        groq_api = GroqApi()
-        self.question_text = groq_api.api_calls(self.question_prompt)
+        self.question_text = self.groq_api.api_calls(self.question_prompt)
         print(f"Generated Question Text: {self.question_text}")
 
+    def get_prev_question_json(self): 
+        file_path = f"data/questions/{self.session_id}.json"
+
+        # Check if file exists
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"No question file found for session ID: {self.session_id}")
+
+        # Read and parse the file
+        with open(file_path, "r", encoding="utf-8") as file:
+            try:
+                questions_data = json.load(file)
+            except json.JSONDecodeError:
+                raise ValueError(f"Invalid JSON in file: {file_path}")
+
+        # Extract question_texts
+        question_texts = [item["question_text"] for item in questions_data if "question_text" in item]
+
+        return question_texts
+    
     def question_audio(self):
         print("Generating audio...")
         deepgram_api = DeepgramAPI(self.session_id, self.question_no)
@@ -103,7 +122,77 @@ class QuestionManager:
         self.question_text_fetch()
         self.question_audio()
         print("Audio generated successfully.")
+        self.save_question_to_json()
         return self.question_text, self.question_audio_path
+
+    def save_question_to_json(self):
+        # Ensure the "data/questions" directory exists
+        questions_dir = os.path.join("data", "questions")
+        os.makedirs(questions_dir, exist_ok=True)
+
+        # Construct the path to the session-specific JSON file (without question number)
+        file_path = os.path.join(questions_dir, f"{self.session_id}.json")
+
+        # Prepare the new question entry
+        question_entry = {
+            "question_no": self.question_no,
+            "question_text": self.question_text
+        }
+
+        # Load existing data if the file exists
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        else:
+            data = []
+
+        # Append the new question
+        data.append(question_entry)
+
+        # Save updated data back to the file
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
+    def get_question_from_json(self):
+        # Construct the file path
+        file_path = os.path.join("data", "questions", f"{self.session_id}.json")
+
+        # Check if the file exists
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"No question file found for session ID: {self.session_id}")
+
+        # Load the questions from the file
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        # Search for the question with the matching question_no
+        for question in data:
+            if question.get("question_no") == self.question_no:
+                return question.get("question_text")
+
+        # If the question is not found
+        raise ValueError(f"Question number {self.question_no} not found in session {self.session_id}")
+
+
+    # Intent handling Code: 
+    def handle_intent_rephrase(self):
+        question_ = self.get_question_from_json()
+        prompt = self.prompt_generator.generate_rephrase_question_prompt(question_)
+        self.rephrased_question_text = self.groq_api.api_calls(prompt)
+        return self.rephrased_question_text
+    
+    
+    def handle_intent_hint(self): 
+        question_ = self.get_question_from_json()
+        prompt = self.prompt_generator.generate_hint_for_question(question_)
+        self.hint = self.groq_api.api_calls(prompt)
+        return self.hint 
+
+    def handle_intent_context(self): 
+        question_ = self.get_question_from_json()
+        prompt = self.prompt_generator.generate_topic_context_for_question(question_)
+        self.context = self.groq_api.api_calls(prompt)
+        return self.contexts
 
 if __name__ == "__main__":
     question_manager = QuestionManager("9b71e9c3-4e6b-4253-9f88-4752cfeca143", 2)
