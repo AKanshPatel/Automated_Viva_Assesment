@@ -188,11 +188,11 @@ class QuestionManager:
         self.hint = self.groq_api.api_calls(prompt)
         return self.hint 
 
-    def handle_intent_context(self): 
+    def handle_intent_context(self, session_id): 
         question_ = self.get_question_from_json()
-        prompt = self.prompt_generator.generate_topic_context_for_question(question_)
+        prompt = self.prompt_generator.generate_topic_context_for_question(question_, session_id)
         self.context = self.groq_api.api_calls(prompt)
-        return self.contexts
+        return self.context
 
 if __name__ == "__main__":
     question_manager = QuestionManager("9b71e9c3-4e6b-4253-9f88-4752cfeca143", 2)

@@ -207,7 +207,7 @@ class PromptGenerator:
         """
         Generates the Unit and Topic name for a given question from the structured question bank.
         """
-        path_of_filter_qb = Path("data/sessions") / f"{self.session_id}_filtered_qb.json"
+        path_of_filter_qb = Path("data/sessions") / f"{session_id}_filtered_qb.json"
         if not path_of_filter_qb.exists():
             print(f"Error: Question bank file not found at {path_of_filter_qb}")
             return {} # Return an empty dictionary or handle the error as appropriate

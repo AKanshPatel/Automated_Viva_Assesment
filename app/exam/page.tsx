@@ -116,7 +116,7 @@ export default function Exam() {
         }
         recordingTimeoutRef.current = setTimeout(() => {
           startRecording()
-        }, 6000)
+        }, 10000)
       }
 
       audioRef.current.addEventListener("ended", handleAudioEnd)
@@ -255,8 +255,8 @@ export default function Exam() {
       }
 
       const data = await response.json()
-      setCurrentQuestion(data.rephrased)
-      setHelperContent(null)
+      // setCurrentQuestion(data.rephrased)
+      setHelperContent(data.rephrased)
       setProcessingAction(null)
 
       // Start recording after a delay

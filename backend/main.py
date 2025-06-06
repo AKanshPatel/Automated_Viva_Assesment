@@ -208,7 +208,7 @@ def get_context_question(
 ):
     try: 
         question_manager = QuestionManager(session_id, question_index)
-        intent_text = question_manager.handle_intent_context()
+        intent_text = question_manager.handle_intent_context(session_id)
         return {"context": intent_text}
     except HTTPException as e:
         raise e
