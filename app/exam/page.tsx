@@ -22,9 +22,14 @@ export default function Exam() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [processingAction, setProcessingAction] = useState<string | null>(null)
-  const [helperContent, setHelperContent] = useState<string | null>(null)
+  const [helperContent, setHelperContent] = useState<Array<{ id: string; type: string; content: string }>>([])
   const [totalQuestions, setTotalQuestions] = useState(0)
   const [session_id, setsession_id] = useState<string | null>(null)
+
+  // Helper button state variables
+  const [isRephraseUsed, setIsRephraseUsed] = useState(false)
+  const [isTopicContextUsed, setIsTopicContextUsed] = useState(false)
+  const [isHintUsed, setIsHintUsed] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -170,7 +175,7 @@ export default function Exam() {
     console.log("startRecording called...")
     try {
       stopRecording() // Ensure any previous recording is stopped
-      setHelperContent(null)
+      // REMOVED: setHelperContent(null) - helper content now persists during recording
       console.log("Existing recording stopped.")
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -244,8 +249,16 @@ export default function Exam() {
 
     try {
       await stopRecording() // Stop current recording
+      setIsRephraseUsed(true) // Disable the button
+      setTimeLeft((prev) => prev + 15) // Increment timer by 15 seconds
       setProcessingAction("rephrase")
-      setHelperContent("Getting rephrased question...")
+
+      // Add loading state to helper content array
+      const loadingId = `rephrase-${Date.now()}`
+      setHelperContent((prev) => [
+        ...prev,
+        { id: loadingId, type: "rephrase", content: "Getting rephrased question..." },
+      ])
 
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/rephrase`
       const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
@@ -255,8 +268,11 @@ export default function Exam() {
       }
 
       const data = await response.json()
-      // setCurrentQuestion(data.rephrased)
-      setHelperContent(data.rephrased)
+
+      // Replace loading content with actual response
+      setHelperContent((prev) =>
+        prev.map((item) => (item.id === loadingId ? { ...item, content: data.rephrased } : item)),
+      )
       setProcessingAction(null)
 
       // Start recording after a delay
@@ -268,7 +284,14 @@ export default function Exam() {
       }, 3000)
     } catch (error) {
       console.error("Error rephrasing question:", error)
-      setHelperContent("Failed to rephrase question. Please try again.")
+      setHelperContent((prev) => [
+        ...prev,
+        {
+          id: `rephrase-error-${Date.now()}`,
+          type: "rephrase",
+          content: "Failed to rephrase question. Please try again.",
+        },
+      ])
       setProcessingAction(null)
     }
   }
@@ -278,8 +301,13 @@ export default function Exam() {
 
     try {
       await stopRecording() // Stop current recording
+      setIsTopicContextUsed(true) // Disable the button
+      setTimeLeft((prev) => prev + 15) // Increment timer by 15 seconds
       setProcessingAction("context")
-      setHelperContent("Getting topic context...")
+
+      // Add loading state to helper content array
+      const loadingId = `context-${Date.now()}`
+      setHelperContent((prev) => [...prev, { id: loadingId, type: "context", content: "Getting topic context..." }])
 
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/context`
       const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
@@ -289,7 +317,11 @@ export default function Exam() {
       }
 
       const data = await response.json()
-      setHelperContent(data.context)
+
+      // Replace loading content with actual response
+      setHelperContent((prev) =>
+        prev.map((item) => (item.id === loadingId ? { ...item, content: data.context } : item)),
+      )
       setProcessingAction(null)
 
       // Start recording after a delay
@@ -301,7 +333,14 @@ export default function Exam() {
       }, 5000) // Give student time to read the context
     } catch (error) {
       console.error("Error getting topic context:", error)
-      setHelperContent("Failed to get topic context. Please try again.")
+      setHelperContent((prev) => [
+        ...prev,
+        {
+          id: `context-error-${Date.now()}`,
+          type: "context",
+          content: "Failed to get topic context. Please try again.",
+        },
+      ])
       setProcessingAction(null)
     }
   }
@@ -311,8 +350,13 @@ export default function Exam() {
 
     try {
       await stopRecording() // Stop current recording
+      setIsHintUsed(true) // Disable the button
+      setTimeLeft((prev) => prev + 15) // Increment timer by 15 seconds
       setProcessingAction("hint")
-      setHelperContent("Getting hint...")
+
+      // Add loading state to helper content array
+      const loadingId = `hint-${Date.now()}`
+      setHelperContent((prev) => [...prev, { id: loadingId, type: "hint", content: "Getting hint..." }])
 
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/hint`
       const response = await fetch(`${apiUrl}?session_id=${session_id}&question_index=${currentQuestionIndex + 1}`)
@@ -322,7 +366,9 @@ export default function Exam() {
       }
 
       const data = await response.json()
-      setHelperContent(data.hint)
+
+      // Replace loading content with actual response
+      setHelperContent((prev) => prev.map((item) => (item.id === loadingId ? { ...item, content: data.hint } : item)))
       setProcessingAction(null)
 
       // Start recording after a delay
@@ -334,7 +380,14 @@ export default function Exam() {
       }, 5000) // Give student time to read the hint
     } catch (error) {
       console.error("Error getting hint:", error)
-      setHelperContent("Failed to get hint. Please try again.")
+      setHelperContent((prev) => [
+        ...prev,
+        {
+          id: `hint-error-${Date.now()}`,
+          type: "hint",
+          content: "Failed to get hint. Please try again.",
+        },
+      ])
       setProcessingAction(null)
     }
   }
@@ -385,25 +438,29 @@ export default function Exam() {
       console.log("Answer submitted successfully:", data)
 
       // Check if this was the last question
-      if (data.isLastQuestion || (totalQuestions > 0 && currentQuestionIndex  >= totalQuestions - 1 )) {
+      if (data.isLastQuestion || (totalQuestions > 0 && currentQuestionIndex >= totalQuestions - 1)) {
         // Last question - redirect to results
         router.push("/results")
         return
       }
 
-
-        setCurrentQuestionIndex((prev) => prev + 1);
-        setAnswer("");
-        setTimeLeft(60);
-        setShowAlert(false);
-        setHelperContent(null);
-        audioChunksRef.current = [] // Clear audio chunks for the next question
-        setLoading(false); // Stop loading after the state update;
-   // Clear audio chunks for next question
+      setCurrentQuestionIndex((prev) => prev + 1)
+      setAnswer("")
+      setTimeLeft(60)
+      setShowAlert(false)
+      setHelperContent([]) // Reset helper content to empty array
+      // Reset helper button states
+      setIsRephraseUsed(false)
+      setIsTopicContextUsed(false)
+      setIsHintUsed(false)
+      audioChunksRef.current = [] // Clear audio chunks for the next question
+      setLoading(false) // Stop loading after the state update;
+      // Clear audio chunks for next question
     } catch (error) {
       console.error("Error submitting answer:", error)
       setError("Failed to submit your answer. Please try again.")
-    } setLoading(false)
+    }
+    setLoading(false)
   }
 
   // Format time as MM:SS
@@ -492,7 +549,7 @@ export default function Exam() {
               <Button
                 variant="outline"
                 onClick={handleRephrase}
-                disabled={processingAction !== null || isRecording || loading}
+                disabled={isRephraseUsed || processingAction !== null || isRecording || loading}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 {processingAction === "rephrase" ? "Rephrasing..." : "Rephrase"}
@@ -500,7 +557,7 @@ export default function Exam() {
               <Button
                 variant="outline"
                 onClick={handleTopicContext}
-                disabled={processingAction !== null || isRecording || loading}
+                disabled={isTopicContextUsed || processingAction !== null || isRecording || loading}
               >
                 <BookOpen className="h-4 w-4 mr-2" />
                 {processingAction === "context" ? "Getting Context..." : "Topic Context"}
@@ -508,18 +565,27 @@ export default function Exam() {
               <Button
                 variant="outline"
                 onClick={handleHint}
-                disabled={processingAction !== null || isRecording || loading}
+                disabled={isHintUsed || processingAction !== null || isRecording || loading}
               >
                 <HelpCircle className="h-4 w-4 mr-2" />
                 {processingAction === "hint" ? "Getting Hint..." : "Hint"}
               </Button>
             </div>
             {/* Display Helper Content */}
-            {helperContent && (
-              <Alert className="mt-4">
-                <AlertDescription>{helperContent}</AlertDescription>
-              </Alert>
-            )}          
+            {helperContent.length > 0 && (
+              <div className="space-y-3">
+                {helperContent.map((item) => (
+                  <Alert key={item.id} className="mt-4">
+                    <AlertTitle>
+                      {item.type === "rephrase" && "Rephrased Question:"}
+                      {item.type === "context" && "Topic Context:"}
+                      {item.type === "hint" && "Hint:"}
+                    </AlertTitle>
+                    <AlertDescription>{item.content}</AlertDescription>
+                  </Alert>
+                ))}
+              </div>
+            )}
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
